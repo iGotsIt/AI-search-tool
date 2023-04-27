@@ -171,9 +171,9 @@ def BFS(graph):
     - Graph: An initialized object of the Graph data structure.
     
     Returns:
-    - Frontier history: A doubly ended queue containing a list of nodes in the frontier at each iteration.
-    - Explore history: A doubly ended queue containing a list of nodes explored at each iteration of the search.
-    - Path history: A doubly ended queue containing a list of nodes in the path at each iteration of search.
+    - Frontier history: A list containing a queue of nodes in the frontier at each iteration.
+    - Explore history: A list containing a queue of nodes explored at each iteration of the search.
+    - Path history: A list containing a list of nodes in the path at each iteration of search.
     """
     frontier_steps = []
     explored_steps = []
@@ -215,9 +215,9 @@ def DFS(graph):
     - Graph: An initialized object of the Graph data structure.
     
     Returns:
-    - Frontier history: A doubly ended queue containing a list of nodes in the frontier at each iteration.
-    - Explore history: A doubly ended queue containing a list of nodes explored at each iteration of the search.
-    - Path history: A doubly ended queue containing a list of nodes in the path at each iteration of search.
+    - Frontier history: A list containing a queue of nodes in the frontier at each iteration.
+    - Explore history: A list containing a queue of nodes explored at each iteration of the search.
+    - Path history: A list containing a list of nodes in the path at each iteration of search.
     """
     frontier_steps = []
     explored_steps = []
@@ -247,8 +247,54 @@ def DFS(graph):
         explored_steps.append(deepcopy(explored))
         paths_history.append(get_path(current_node, previous_node))
 
+#In[6]:
+def a_star_search(graph: Graph):
+    """
+     Executes a breadth-first search on the provided Graph object with the given heuristics and costs
+    
+    Parameters:
+    - Graph: An initialized object of the Graph data structure.
+    
+    Returns:
+    - Frontier history: A list containing a list of nodes in the frontier at each iteration.
+    - Explore history: A list containing a list of nodes explored at each iteration of the search.
+    - Path history: A list containing a list of nodes in the path at each iteration of search.
+    """
+    frontier_steps = []
+    explored_steps = []
+    path_history = []
+    frontier = queue.PriorityQueue()
+    start = graph.start
+    previous_node = {start: None}
+    cost_of_node = {start: 0}
+    frontier.put((graph.vertices[start],start))
+    frontier_steps.append([node[1] for node in frontier.queue])
+    path_history.append([])
+    explored_steps.append(list(cost_of_node.keys()))
+    while not frontier.empty():
+        current_position = frontier.get()[1]
+        if current_position == graph.goal:
+            frontier_steps.append([node[1] for node in frontier.queue])
+            path_history.append(get_path(current_position, previous_node))
+            explored_steps.append(list(cost_of_node.keys()))
+            return frontier_steps, explored_steps, path_history
+        for new_position in graph.adjList[current_position]:
+            try:
+                edge = (current_position, new_position)
+                new_position_cost = cost_of_node[current_position] + graph.edges[edge]
+            except:
+                edge = (new_position, current_position)
+                new_position_cost = cost_of_node[current_position] + graph.edges[edge]
+            if new_position not in cost_of_node or new_position_cost < cost_of_node[new_position]:
+                cost_of_node[new_position] = new_position_cost
+                priority = new_position_cost + graph.vertices[new_position]
+                frontier.put((priority, new_position))
+                previous_node[new_position] = current_position
+        frontier_steps.append([node[1] for node in frontier.queue])
+        path_history.append(get_path(current_position, previous_node))
+        explored_steps.append(list(cost_of_node.keys()))
 
-# In[6]:
+# In[7]:
 
 
 def animate_search(graph, f_h, e_h, p_h):
@@ -301,7 +347,7 @@ def save_animation(animation, filename):
     animation.save(filename)
 
 
-# In[7]:
+# In[8]:
 
 
 Point = Union[int, str]
@@ -346,7 +392,7 @@ def interative_deepening(graph: Graph) -> Optional[Trace]:
     return None
 
 
-# In[8]:
+# In[9]:
 
 
 EvalFunc = Callable[[Graph, Point], int]
@@ -394,7 +440,7 @@ def beam_search(graph: Graph, width: int = 2, eval_func: EvalFunc = degree_eval)
     return trace
 
 
-# In[9]:
+# In[10]:
 
 
 def hill_climbing(graph: Graph, eval_func: EvalFunc = degree_eval, only_best: bool = True) -> Optional[Trace]:
@@ -426,7 +472,7 @@ def hill_climbing(graph: Graph, eval_func: EvalFunc = degree_eval, only_best: bo
     return __dfs_with_best(graph.start, [])
 
 
-# In[10]:
+# In[11]:
 
 
 def print_frontier(frontier):
