@@ -474,34 +474,21 @@ def hill_climbing(graph: Graph, eval_func: EvalFunc = degree_eval, only_best: bo
 
 # In[11]:
 
-
-def print_frontier(frontier):
-    print("\rThe frontier currently has {} nodes.".format(frontier), end='', flush=True)
-
-class VariableObserver:
-    def __init__(self, variable):
-        self.variable = variable
-        self.previous_value = variable
-        self.previous_value_length = len(self.previous_value)
-        self.max_length = self.previous_value_length
-        self.callback = None
-
-    def set_callback(self, callback):
-        self.callback = callback
-
-    def check(self):
-        current_value = self.variable
-        current_frontier_length = len(current_value)
-        if current_frontier_length != self.previous_value_length:
-            self.previous_value = current_value
-            self.previous_value_length = current_frontier_length
-            if current_frontier_length > self.max_length:
-                self.max_length = current_frontier_length
-            if self.callback:
-                self.callback(self.max_length)
-
-
-class Benchmarking:
+"""
+The Benchmarking class is used time the execution of the algorithms and graph the results.
+"""
+class BenchmarkingReduced:
+    """
+    The constructor takes in the algorithms to be benchmarked, the inputs to be used, and creates the names of the algorithms.
+    Inputs:
+        - bfs: The breadth first search algorithm
+        - dfs: The depth first search algorithm
+        - a_star: The A* algorithm
+        - iterative_deeping: The iterative deeping algorithm
+        - beam: The beam algorithm
+        - hill_climbing: The hill climbing algorithm
+        - inputs: A list of lists of inputs to be used for each algorithm (have to be inputted in the same order as the algorithms)
+    """
     def __init__(self, bfs, dfs, a_star, iterative_deeping, beam, hill_climbing, inputs):
         self.bfs = bfs
         self.dfs = dfs
@@ -514,59 +501,60 @@ class Benchmarking:
         self.names = ["BFS", "DFS", "A*", "Iterative Deeping", "Beam", "Hill Climbing"]
         self.exclusion_list = []
         self.execution_time = [-1, -1, -1, -1, -1, -1]
-        self.maximum_frontier_size = [-1, -1, -1, -1, -1, -1]
-        self.frontier = []
-        self.frontier_observer = None
-        
+    """
+    The update_exclusion_list function takes in a list of indices of algorithms to be excluded from the benchmarking.
+    Inputs:
+        - exclusion_list: A list of indices of algorithms to be excluded from the benchmarking.
+    """
     def update_exclusion_list(self, exclusion_list):
         self.exclsion_list = exclusion_list
-        
-    def function_timer(self, function, inputs, frontier, check, number=1):
+    """
+    The function_timer runs the function with the given inputs and returns the time it took to run.
+    Inputs:
+        - function: The function to be timed
+        - inputs: The inputs to be used for the function
+        - number: The number of times to run the function (default is 1)
+    Returns:
+        - The time it took to run the function (in seconds)
+    """    
+    def function_timer(self, function, inputs, number=1):
         timer = timeit.Timer(lambda: function(*inputs))
         return timer.timeit(number=number)
-    
-    def frontier_initialization(self, frontier):
-        self.frontier = frontier
-        self.frontier_observer = VariableObserver(self.frontier)
-        self.frontier_observer.set_callback(print_frontier)
-        return self.frontier_observer.check
-    
+    """
+    The run_single_function function runs a single function and prints the time it took to run.
+    Inputs:
+        - function: The function to be timed
+        - name: The name of the function
+        - inputs: The inputs to be used for the function
+        - i: The index of the function in the list of functions
+    """
     def run_single_function(self, function, name, inputs, i):
-        frontier = [];
-        check = self.frontier_initialization(frontier)
-        time = self.function_timer(function, inputs, frontier, check)
-        print(name, " took " + str(time) + " seconds to run")
-        self.execution_time[i] = round(time, 2)
-        self.maximum_frontier_size[i] = self.frontier_observer.max_length
-        
+        time = self.function_timer(function, inputs)
+        print(f'{name} took {time} seconds to run')
+        self.execution_time[i] = time
+    """
+    The reset_execution_time function resets the execution time to -1 for all algorithms.
+    """    
     def reset_execution_time(self):
         self.execution_time = [-1, -1, -1, -1, -1, -1]
-        
-    def reset_maximum_frontier_size(self):
-        self.maximum_frontier_size = [-1, -1, -1, -1, -1, -1]
-    
+    """
+    The benchmark function runs all the algorithms and prints the time it took to run. Also updates the execution_time list.
+    """
     def benchmark(self):
         self.reset_execution_time()
-        self.reset_maximum_frontier_size()
         for i in range(len(self.list_of_functions)):
             if i not in self.exclusion_list:
                 self.run_single_function(self.list_of_functions[i], self.names[i], self.inputs[i], i)
-                                
-    def graph_execution_times_and_frontier_size(self):
+    """
+    The graph_execution_times function graphs the execution times of the algorithms. Excludes the algorithms in the exclusion list.
+    """                            
+    def graph_execution_times(self):
         compared_names = [self.names[i] for i in range(len(self.names)) if i not in self.exclusion_list]
         compared_times = [self.execution_time[i] for i in range(len(self.execution_time)) if i not in self.exclusion_list]
-        compared_frontier = [self.maximum_frontier_size[i] for i in range(len(self.maximum_frontier_size)) if i not in self.exclusion_list]
 
         fig, ax1 = plt.subplots()
-        ax2 = ax1.twiny()
-
-        bar_widths = [f / max(compared_frontier) for f in compared_frontier]
         blue_bars = ax1.barh(compared_names, compared_times, color='blue', height=0.5, alpha=0.5)
         ax1.set_xlabel('Execution Time (s)')
-        red_bars = ax2.barh(compared_names, compared_frontier, color='red', height=0.2, alpha=0.5, linewidth=0)
-        ax2.set_xlabel('Maximum Frontier Size')
-        ax2.barh(compared_names, bar_widths, left=0, color='none', linewidth=1, edgecolor='k')
-        ax1.legend([blue_bars, red_bars], ['Execution Time (s)', 'Maximum Frontier Size'])
 
         plt.show()
 
