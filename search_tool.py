@@ -477,7 +477,7 @@ def hill_climbing(graph: Graph, eval_func: EvalFunc = degree_eval, only_best: bo
 """
 The Benchmarking class is used time the execution of the algorithms and graph the results.
 """
-class BenchmarkingReduced:
+class Benchmarking:
     """
     The constructor takes in the algorithms to be benchmarked, the inputs to be used, and creates the names of the algorithms.
     Inputs:
