@@ -14,7 +14,7 @@ import queue
 from copy import deepcopy
 from celluloid import Camera
 from IPython.display import HTML
-from typing import List, Union, Optional
+from typing import  List, Union, Tuple, Deque, Set, Optional
 from typing import Callable, Dict, Iterator
 import timeit
 
@@ -352,7 +352,7 @@ def save_animation(animation, filename):
 
 Point = Union[int, str]
 Trace = List[Point]
-def interative_deepening(graph: Graph) -> Optional[Trace]:
+def interative_deepening(graph: Graph) -> Tuple[Optional[Trace], List[Deque[Point]], List[Set[Point]], List[Trace]]:
     """
     Uses the iterative deepening algorithm to search for a path from `graph.start` to `graph.goal`.
 
@@ -371,25 +371,48 @@ def interative_deepening(graph: Graph) -> Optional[Trace]:
     """
     # A helper function that performs a DFS search with a limited depth 
     # and returns a trace list of the search result.
-    def __dfs_with_limit(cur_point: Point, deep: int, trace: Trace) -> Optional[Trace]: 
+    def __dfs_with_limit(cur_point: Point, deep: int, trace: Trace, frontier: Deque[Point], explored: Set[Point]) -> Tuple[Optional[Trace], List[Deque[Point]], List[Set[Point]], List[Trace]]: 
+        frontier_steps, explored_steps, paths_history = [], [], []
         trace.append(cur_point)
+        explored.add(cur_point)
         neighbours = graph.adjList.get(cur_point, [])
-        if cur_point == graph.goal: return trace
-        if deep == 0 or len(neighbours) == 0: return None
-        for n in neighbours: 
+
+        frontier_steps.append(deepcopy(frontier))
+        explored_steps.append(deepcopy(explored))
+        paths_history.append(trace[:])
+
+        if cur_point == graph.goal: 
+            return trace, frontier_steps, explored_steps, paths_history
+        if deep == 0 or len(neighbours) == 0: 
+            return None, frontier_steps, explored_steps, paths_history
+        for n in neighbours:
             if n in trace: continue
-            found_trace = __dfs_with_limit(n, deep-1, trace.copy())
-            if found_trace is not None: return found_trace
-        return None
+            frontier.append(n)
+            found_trace, new_frontier_steps, new_explored_steps, new_paths_history = __dfs_with_limit(n, deep-1, trace.copy(), deepcopy(frontier), deepcopy(explored))
+            if found_trace is not None: 
+                frontier_steps.extend(new_frontier_steps)
+                explored_steps.extend(new_explored_steps)
+                paths_history.extend(new_paths_history)
+                return found_trace, frontier_steps, explored_steps, paths_history
+            frontier.remove(n)
+        return None, frontier_steps, explored_steps, paths_history
+    
     # Initialize depth variables
     cur_deep, max_deep = 0, len(graph.vertices)
+    frontier, explored = deque([graph.start]), {graph.start}
+
+    final_frontier_steps, final_explored_steps, final_paths_history = [], [], []
+
     # Iteratively perform DFS search with increasing depth limit
     while cur_deep != max_deep: 
-        found = __dfs_with_limit(graph.start, cur_deep, list())
-        if found is not None: return found
+        found, frontier_steps, explored_steps, paths_history = __dfs_with_limit(graph.start, cur_deep, list(), frontier.copy(), explored.copy())
+        final_frontier_steps.extend(frontier_steps)
+        final_explored_steps.extend(explored_steps)
+        final_paths_history.extend(paths_history)
+        if found is not None: return found, final_frontier_steps, final_explored_steps, final_paths_history
         cur_deep = cur_deep + 1
     # Return None if no path is found
-    return None
+    return None, final_frontier_steps, final_explored_steps, final_paths_history
 
 
 # In[9]:
@@ -439,7 +462,6 @@ def beam_search(graph: Graph, width: int = 2, eval_func: EvalFunc = degree_eval)
         trace.insert(0, parent_of[trace[0]])
     return trace
 
-
 # In[10]:
 
 
@@ -470,6 +492,42 @@ def hill_climbing(graph: Graph, eval_func: EvalFunc = degree_eval, only_best: bo
             if found_trace is not None: return found_trace
         return None
     return __dfs_with_best(graph.start, [])
+
+
+def hill_climbing(graph: Graph, eval_func: EvalFunc = degree_eval, only_best: bool = True) -> Tuple[Optional[Trace], List[Deque[Point]], List[Deque[Point]], List[Trace]]:
+    frontier_steps, explored_steps, paths_history = [], [], []
+
+    def __dfs_with_best(cur_point: Point, trace: Trace, explored: Set[Point], frontier: Deque[Point]) -> Optional[Trace]:
+        trace.append(cur_point)
+        explored.add(cur_point)
+        frontier.remove(cur_point)
+        neighbours = graph.adjList.get(cur_point, [])
+        neighbours.sort(key=lambda p: eval_func(graph, p), reverse=True)
+        if only_best:
+            neighbours = [neighbours[0]] if neighbours else []
+        for n in neighbours:
+            if n not in explored:
+                frontier.append(n)
+        frontier_steps.append(deepcopy(frontier))
+        explored_steps.append(deepcopy(explored))
+        path = trace.copy()
+        paths_history.append(path)
+
+        if cur_point == graph.goal:
+            return trace
+        if len(neighbours) == 0:
+            return None
+
+        for n in neighbours:
+            if n in trace:
+                continue
+            found_trace = __dfs_with_best(n, trace.copy(), explored.copy(), frontier.copy())
+            if found_trace is not None:
+                return found_trace
+        return None
+
+    trace = __dfs_with_best(graph.start, [], set(), deque([graph.start]))
+    return trace, frontier_steps, explored_steps, paths_history
 
 
 # In[11]:
